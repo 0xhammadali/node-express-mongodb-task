@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Socket.io Quick Test</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <h3>Socket.io Chat Tester</h3>
+  <label>Server URL: <input id="url" value="http://localhost:3000" size="35"></label><br>
+  <label>JWT Token (sender) : <input id="token" size="60"></label><br>
+  <label>ReceiverId: <input id="recv" size="30"></label><br>
+  <button onclick="connect()">Connect</button>
+  <hr>
+  <input id="msg" placeholder="Type message"><button onclick="send()">Send</button>
+  <button onclick="clearLog()">Clear Log</button>
+  <pre id="log" style="border:1px solid #ccc;height:200px;overflow:auto"></pre>
+
+<script>
+let socket;
+function log(...args){ document.getElementById('log').textContent += args.join(' ')+'\n'; }
+function connect(){
+  socket = io(document.getElementById('url').value, {
+    auth:{ token: document.getElementById('token').value }
+  });
+  socket.on('connect', ()=>log('✅ connected', socket.id));
+  socket.on('privateMessage', m=>log('📩', JSON.stringify(m)));
+  socket.on('userOnline', id=>log('🟢 userOnline', id));
+  socket.on('userOffline',id=>log('🔴 userOffline', id));
+  socket.on('error', err=>log('⚠️ error', err));
+}
+function send(){
+  socket.emit('privateMessage',{
+    receiverId: document.getElementById('recv').value,
+    message: document.getElementById('msg').value
+  });
+}
+
+function clearLog(){
+  document.getElementById('log').textContent = '';
+}
+</script>
+</body>
+</html>
