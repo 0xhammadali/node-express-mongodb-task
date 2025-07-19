@@ -40,6 +40,8 @@ const io = new Server(server, {
   },
 });
 
+// Map<playerId, Array<fanId>> — most recent fan message first
+const fanStacks = new Map();
 // Store online users
 authenticatedUsers = new Map();
 //Client logs in and receives a JWT token.
@@ -81,6 +83,34 @@ io.on('connection', (socket) => {
       if (sender.role === receiver.role) {
         socket.emit('error', 'Chat not allowed between same roles');
         return;
+      }
+
+      // Maintain fan message stack per player
+      if (sender.role === 'fan' && receiver.role === 'player') {
+        const stack = fanStacks.get(receiverId) || [];
+        // Remove sender if already in stack
+        const filtered = stack.filter((id) => id !== userId);
+        filtered.unshift(userId); // most recent on top
+        fanStacks.set(receiverId, filtered);
+
+        // If player is online, send updated stack
+        const playerSocketId = authenticatedUsers.get(receiverId);
+        if (playerSocketId) {
+          io.to(playerSocketId).emit('fanStackUpdate', filtered);
+        }
+      }
+
+      if (sender.role === 'player' && receiver.role === 'fan') {
+        // Optional: clear fan from stack once player replies
+        const stack = fanStacks.get(sender.id);
+        if (stack) {
+          const idx = stack.indexOf(receiverId);
+          if (idx !== -1) {
+            stack.splice(idx, 1);
+            fanStacks.set(sender.id, stack);
+            socket.emit('fanStackUpdate', stack);
+          }
+        }
       }
 
       const msgDoc = await Message.create({

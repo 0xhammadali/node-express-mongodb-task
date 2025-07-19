@@ -52,7 +52,8 @@ router.post('/login', async (req, res) => {
     console.log("jwtSecret",jwtSecret);
     console.log("payload",payload);
     const token = jwt.sign(payload, jwtSecret, { expiresIn: '24h' });
-    console.log("login token",token);
+    console.log('SIGNED TOKEN:', token);
+    console.log('PAYLOAD USED:', payload);
 
     // update lastLogin
     await User.updateOne({ _id: user._id }, { $set: { lastLogin: new Date(), online: true } });

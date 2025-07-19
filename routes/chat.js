@@ -51,4 +51,38 @@ router.get('/online', auth, async (req, res) => {
   }
 });
 
+// GET /api/chat/fan-stack => list fans ordered by most recent message to player
+router.get('/fan-stack', auth, async (req, res) => {
+  try {
+    const playerId = req.user.id;
+    console.log("player id",req.user.id)
+    const player = await User.findById(playerId);
+    console.log("player",player);
+    if (!player || player.role !== 'player') {
+      return res.status(403).json({ msg: 'Only players can access fan stack' });
+    }
+
+    // fetch all messages from fans to this player, newest first
+    const stack = await Message.find({ receiver: playerId })
+      .sort({ timestamp: -1 })
+      .populate({ path: 'sender', select: 'name role', match: { role: 'fan' } })
+      .lean();
+
+    // Filter out any documents where sender population failed (non-fan)
+    const fanMessages = stack
+      .filter((doc) => doc.sender)
+      .map((doc) => ({
+        fanId: doc.sender._id,
+        name: doc.sender.name,
+        message: doc.message,
+        at: doc.timestamp,
+      }));
+
+    return res.json(fanMessages);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
+
 module.exports = router; 
